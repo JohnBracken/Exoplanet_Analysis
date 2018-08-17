@@ -1,0 +1,246 @@
+---
+title: "NASA Exoplanet Data Analysis"
+author: "JB"
+date: "August 17, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This report describes an analysis of exoplanet data taken from NASA and Caltech's website (https://exoplanetarchive.ipac.caltech.edu/).  Amazingly, over 3500 exoplants outside of 
+our solar system have been found by astronomers so far.  In this analysis, there will be
+several areas of investigation: 1) A summary of the number of counts of each discovery 
+method used to find the planets, 2) A print-out of the least and most massive planet in 
+the data, along with mean, median and mode mass, 3) A histogram-density plot of planet
+masses, 4) A bar plot of the orbital periods of 10 planets, with error bars included,
+5) A correlation plot of measured planet masses vs. their density-volume products. 
+
+
+Load libraries:
+```{r libraries, message = FALSE, warning = FALSE}
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+library(extrafont)
+loadfonts(device = "win")
+library(caret)
+library(e1071)
+library(scales)
+```
+
+Load NASA/Caltech exoplanet data:
+```{r data}
+planet_data <- read.csv("compositepars.csv")
+```
+
+### 1. Discovery Method Analysis
+
+In this section, I will investigate the number of times each discovery method was used to 
+find the exoplanets in the data.  This will be summarized in a bar plot.  Since some 
+methods were used a lot more than others, a log scale will be used for the y-axis to 
+be able to show everything clearly.
+```{r method_count}
+discovery_summary <- as.data.frame(table(planet_data$fpl_discmethod))
+discovery_summary <- arrange(discovery_summary,desc(Freq))
+colnames(discovery_summary) <- c("Discovery_Method","Counts")
+```
+
+Create and print a bar plot of the number of counts of each planet discovery method.
+```{r method_plot, fig.align="center"}
+discovery_plot <- ggplot(data=discovery_summary, aes(reorder(Discovery_Method,-Counts),
+                         Counts), na.rm=T) + 
+geom_bar(stat="identity", fill = 'springgreen4') +
+labs(title = "Planet Discovery Method Counts",x = "Discovery Method",
+y= "Counts (log10 scale)") + theme(text = element_text(size=18, 
+                                family="Berlin Sans FB")) +
+theme(panel.background = element_rect(fill = "peachpuff",
+                                      colour = "peachpuff",
+                                      size = 1, linetype = "solid"),
+        panel.grid.major = element_line(size = 1, linetype = 'solid',
+                                        colour = "black"), 
+        panel.grid.minor = element_line(size = 1, linetype = 'solid',
+                                        colour = "black")
+  )+ theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x))
+print(discovery_plot)
+```
+
+The transit method appears to be the most frequently used exoplanet discovery technique,
+followed by the radial velocity method.
+
+### 2. Planet Mass Analysis
+
+In this section, the planets with the largest and smallest masses are determined, along with
+the mean, median and mode mass.
+
+Determine the least and most massive planets.
+```{r mass_min_max}
+#Reorder the planet data based on increasing mass
+planet_mass_data <- arrange(planet_data, fpl_bmasse)
+
+#Convert planet names to a character vector.
+planet_mass_data$fpl_name <- as.character(planet_mass_data$fpl_name)
+#Get the mass of the most massive planet and the row index where it is in the
+#data.
+max_mass<- max(planet_mass_data$fpl_bmasse, na.rm=T)
+max_index <- which(planet_mass_data$fpl_bmasse == max_mass)
+
+#Get the mass of the smallest planet and the corresponding row index.
+min_mass <- min(planet_mass_data$fpl_bmasse, na.rm=T)
+min_index <- which(planet_mass_data$fpl_bmasse == min_mass)
+```
+
+Print out the planets with the minimum and maximum masses.
+```{r min_max_print}
+#Print out the least and most massive exoplanets.
+cat("The most massive exoplanet is: ", planet_mass_data$fpl_name[max_index],"\n")
+cat("This planet has a mass ",planet_mass_data$fpl_bmasse[max_index],
+    "times that of the Earth according to the NASA data.\n\n")
+
+cat("The least massive exoplanet is: ", planet_mass_data$fpl_name[min_index],"\n")
+cat("This planet has a mass ",planet_mass_data$fpl_bmasse[min_index],
+    "times that of the Earth according to the NASA data.\n\n")
+```
+
+Calculate the mean, median and mode planet masses.
+```{r mean_med_mode}
+#Calculate the mean planet mass.
+mean_mass <- mean(planet_mass_data$fpl_bmasse, na.rm=T)
+
+#Calculate the median planet mass.
+median_mass <- median(planet_mass_data$fpl_bmasse, na.rm=T)
+
+#Calculate the mode of the planet masses.  First, remove NAs from planet
+#masses and put them in a separate vector.
+mass_values <- planet_mass_data$fpl_bmasse[!is.na(planet_mass_data$fpl_bmasse)]
+
+#Calculate the mode
+mass_counts <- table(planet_mass_data$fpl_bmasse)
+mode_mass <- mass_counts[which(mass_counts == max(mass_counts))]
+mass_value <- as.numeric(names(mode_mass))
+```
+
+Print out the mean, median and mode mass value.
+```{r mean_median_mode_print}
+cat("The mean exoplanet mass is ", mean_mass,"times that of the Earth. \n")
+cat("The median exoplanet mass is ", median_mass,"times that of the Earth. \n")
+cat("The mode exoplanet mass is ", mass_value, "times that of the Earth.  \n")
+```
+
+### 3. Planet Mass Histogram-Density Plot
+
+In this section, a histogram density plot of the planet masses is generated and plotted.
+Most of the planets fall into the bin of 2-4 times the mass of the Earth.
+```{r mass_histogram, warning=FALSE, fig.align="center"}
+mass_hist <-ggplot(data=planet_mass_data, aes(planet_mass_data$fpl_bmasse, na.rm=T)) + 
+  geom_histogram(aes(y =..density..), 
+                 breaks=seq(0, 40, by = 2), 
+                 col="red", 
+                 fill="darkturquoise", 
+                 alpha = .6) + 
+  geom_density(col=1,size=1) + 
+  labs(title="Exoplanet mass distribution (Unit: Earth masses)") +
+  labs(x="Earth Mass", y="Density")+ xlim(c(0,40))+
+  theme(text = element_text(size=16, family="Bell MT", face="bold"))
+print(mass_hist)
+```
+
+
+### 4.  Orbital Period Analysis
+
+In this section, the orbital period of 10 planets is shown on a bar plot, with error bars.
+The error bars show the uncertainty in the orbital period measurements.  
+
+Get the orbital period data of 10 planets chosen from the dataset.
+```{r orbit_data}
+#Create a sub frame of data that takes only orbital period and its error bar values. 
+orbit_data <- select(planet_mass_data,fpl_name,fpl_orbper,fpl_orbpererr1,fpl_orbpererr2)
+
+#Remove any rows that have NAs in them.  Want completed cases only.
+orbit_data <- orbit_data[complete.cases(orbit_data), ]
+
+#Arrange the orbital period data in order of increasing orbital period.
+orbit_data <- arrange(orbit_data,fpl_orbper)
+
+#Take a subset of 10 planets that have large orbital periods.
+orbit_plot_data <- orbit_data[3515:3524,]
+```
+
+Show a bar plot with error bars of the orbital period of the ten chosen planets.
+```{r orbit_plot, fig.width=8, fig.height=6, fig.align="center"}
+orbit_plot<- ggplot(orbit_plot_data, aes(x=reorder(fpl_name, fpl_orbper), y=fpl_orbper)) + 
+  geom_bar(stat="identity", color="black", fill="slateblue1", alpha=0.5) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  labs(x="Planet name", y="Orbital Period (days)")+
+  geom_errorbar(aes(ymin= fpl_orbper+fpl_orbpererr2, 
+                    ymax=fpl_orbper+fpl_orbpererr1), width=.2, 
+                color="darkblue", size=1) +
+  theme(text = element_text(size=14, family="Philips Screen Font Condensed", face="bold"))
+print(orbit_plot)
+```
+
+There is quite a large variation in the uncertainty in the measurements of the orbital periods of
+these planets.
+
+### 5.  Correlation between measured planet masses and measured density/volume products
+
+In this section a linear correlation model is fit to determine the relationship between
+the measured planet masses and the measured density/volume products.  In theory, this
+relationship between these two quantities should be very strong, since planet mass should have
+a value close to its mean density times its volume.  This is also a good test of the accuracy
+of the measurements of these quantities for the planets.  
+```{r correlation_data, fig.width=8, fig.align="center"}
+#Get data for a correlation plot between planet mass and density/volume product.
+cor_data <- select(planet_data, fpl_name, fpl_bmasse, fpl_rade, fpl_dens)
+cor_data <- cor_data[complete.cases(cor_data),]
+
+#Determine the radius of each planet in km.  Convert
+#all radii to km by multiplying by the radius of the Earth (in km)
+cor_data <- mutate(cor_data, radius = fpl_rade*6371)
+
+#convert the earth mass values to actual masses in kg.
+cor_data <- mutate(cor_data, mass = fpl_bmasse*5.972e24)
+
+#Volume of each planet in km^3
+cor_data <- mutate(cor_data, vol = (4/3)*pi*radius^3)
+
+#convert densities to units of kg/km^3.
+cor_data <- mutate(cor_data, density = fpl_dens*1e12)
+
+#Calculate density/volume product.
+cor_data <- mutate(cor_data, densvol = density*vol)
+```
+
+Produce and summarize the linear model comparing planet masses to density/volume
+products.
+```{r linear_model}
+mass_fit <- lm(mass~densvol, data=cor_data)
+summary(mass_fit)
+```
+
+From the results of this fit, the relationship between planet mass and density-volume
+product is very strong, indicating that the quantities of planet mass, radius and density
+were accurately measured by astronomers.
+
+Now I will show the correlation plot, highlighting the strong relationship between planet mass
+and density-volume product.
+```{r corr_plot, fig.align="center"}
+cor_data <- cor_data[!(cor_data$mass == max(cor_data$mass)),]
+mass_fit_plot <- ggplot(data = cor_data, aes(x = densvol, y = mass)) + 
+  geom_point(color='blue', size=3) +
+  geom_smooth(method = "lm", se = FALSE, color="red")+
+  labs(x="Density/volume product (kg)", y="Planet Mass (kg)" )+
+  labs(title = "Correlation plot")+
+  theme(text = element_text(size=16, family="Rod", face="bold"))
+print(mass_fit_plot)
+```
+
+## Conclusion
+
+This report highlighted some of the properties of the exoplanet data obtained from
+NASA/Caltech sources.  There is a very large range of behavior and properties among
+these planets, and it's really quite remarkable that exoplanets have been discovered
+in our lifetimes (no aliens yet, though :)).

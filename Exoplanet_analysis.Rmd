@@ -1,3 +1,29 @@
+```{css, echo=FALSE}
+body {background-color:black;}
+p    {font-family: "Agency FB";
+      font-size: 20px;
+      font-weight: bold;
+      color: yellow;
+      background-color:black;}
+h2 {font-family: "OCR A Extended";
+    font-weight: bold;
+    color: yellow;}
+h3 {font-family: "OCR A Extended";
+    font-weight: bold;
+    color: yellow;}
+h1.title {
+  font-family: "OCR A Extended";
+  font-weight: bold;
+  color: yellow;}
+h4{
+  font-family: "OCR A Extended";
+  font-weight: bold;
+  color: yellow;}
+pre{background-color:black;
+  color: yellow;}
+pre:not([class]){background-color:black;}
+```
+
 ---
 title: "NASA Exoplanet Data Analysis"
 author: "JB"
@@ -5,22 +31,7 @@ date: "August 17, 2018"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## Introduction
-This report describes an analysis of exoplanet data taken from NASA and Caltech's website (https://exoplanetarchive.ipac.caltech.edu/).  Amazingly, over 3500 exoplants outside of 
-our solar system have been found by astronomers so far.  In this analysis, there will be
-several areas of investigation: 1) A summary of the number of counts of each discovery 
-method used to find the planets, 2) A print-out of the least and most massive planet in 
-the data, along with mean, median and mode mass, 3) A histogram-density plot of planet
-masses, 4) A bar plot of the orbital periods of 10 planets, with error bars included,
-5) A correlation plot of measured planet masses vs. their density-volume products. 
-
-
-Load libraries:
-```{r libraries, message = FALSE, warning = FALSE}
+```{r libraries, message = FALSE, warning = FALSE, echo=FALSE }
 library(dplyr)
 library(ggplot2)
 library(ggfortify)
@@ -30,6 +41,24 @@ library(caret)
 library(e1071)
 library(scales)
 ```
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This report describes an analysis of exoplanet data taken from NASA and Caltech's website 
+(https://exoplanetarchive.ipac.caltech.edu/).  Amazingly, over 3500 exoplants outside of 
+our solar system have been found by astronomers so far.  In this analysis, there will be
+several areas of investigation: 1) A summary of the number of counts of each discovery 
+method used to find the planets, 2) A print-out of the least and most massive planet in 
+the data, along with mean, median and mode mass, 3) A histogram-density plot of planet
+masses, 4) A bar plot of the orbital periods of 10 planets, with error bars included,
+5) A correlation plot of measured planet masses vs. their density-volume products. 
+
+
 
 Load NASA/Caltech exoplanet data:
 ```{r data}
@@ -52,19 +81,21 @@ Create and print a bar plot of the number of counts of each planet discovery met
 ```{r method_plot, fig.align="center"}
 discovery_plot <- ggplot(data=discovery_summary, aes(reorder(Discovery_Method,-Counts),
                          Counts), na.rm=T) + 
-geom_bar(stat="identity", fill = 'springgreen4') +
+geom_bar(stat="identity", fill = 'cyan1') +
 labs(title = "Planet Discovery Method Counts",x = "Discovery Method",
-y= "Counts (log10 scale)") + theme(text = element_text(size=18, 
-                                family="Berlin Sans FB")) +
-theme(panel.background = element_rect(fill = "peachpuff",
-                                      colour = "peachpuff",
+y= "Counts (log10 scale)") + theme(text = element_text(size=16, 
+                                family="OCR A Extended",color="yellow")) +
+theme(panel.background = element_rect(fill = "black",
+                                      colour = "yellow",
                                       size = 1, linetype = "solid"),
         panel.grid.major = element_line(size = 1, linetype = 'solid',
-                                        colour = "black"), 
+                                        colour = "yellow"), 
         panel.grid.minor = element_line(size = 1, linetype = 'solid',
-                                        colour = "black")
-  )+ theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x))
+                                        colour = "yellow")
+  )+ theme(axis.text.x = element_text(angle = 45, hjust = 1, color="yellow"))+
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x))+
+  theme(plot.background = element_rect(fill = "black"))+
+  theme(axis.text.y = element_text(color="yellow"))
 print(discovery_plot)
 ```
 
@@ -138,13 +169,21 @@ Most of the planets fall into the bin of 2-4 times the mass of the Earth.
 mass_hist <-ggplot(data=planet_mass_data, aes(planet_mass_data$fpl_bmasse, na.rm=T)) + 
   geom_histogram(aes(y =..density..), 
                  breaks=seq(0, 40, by = 2), 
-                 col="red", 
-                 fill="darkturquoise", 
-                 alpha = .6) + 
-  geom_density(col=1,size=1) + 
-  labs(title="Exoplanet mass distribution (Unit: Earth masses)") +
-  labs(x="Earth Mass", y="Density")+ xlim(c(0,40))+
-  theme(text = element_text(size=16, family="Bell MT", face="bold"))
+                 col="darkblue", 
+                 fill="#FFA420") + 
+  geom_density(col="red",size=1.5) + 
+  labs(title="Exoplanet mass distribution") +
+  labs(x="Earth Masses", y="Density")+ xlim(c(0,40))+
+  theme(text = element_text(size=16, family="OCR A Extended", face="bold", color="yellow"))+
+  theme(plot.background = element_rect(fill = "black"))+
+  theme(panel.background = element_rect(fill = "black",
+                                      colour = "yellow",
+                                      size = 1, linetype = "solid"))+
+  theme(panel.grid.major = element_line(size = 1, linetype = 'solid',
+                                        colour = "yellow"), 
+        panel.grid.minor = element_line(size = 1, linetype = 'solid',
+                                        colour = "yellow"))+
+  theme(axis.text = element_text(color="yellow"))
 print(mass_hist)
 ```
 
@@ -172,13 +211,22 @@ orbit_plot_data <- orbit_data[3515:3524,]
 Show a bar plot with error bars of the orbital period of the ten chosen planets.
 ```{r orbit_plot, fig.width=8, fig.height=6, fig.align="center"}
 orbit_plot<- ggplot(orbit_plot_data, aes(x=reorder(fpl_name, fpl_orbper), y=fpl_orbper)) + 
-  geom_bar(stat="identity", color="black", fill="slateblue1", alpha=0.5) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  geom_bar(stat="identity", color="black", fill="springgreen") +
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))+
   labs(x="Planet name", y="Orbital Period (days)")+
   geom_errorbar(aes(ymin= fpl_orbper+fpl_orbpererr2, 
                     ymax=fpl_orbper+fpl_orbpererr1), width=.2, 
-                color="darkblue", size=1) +
-  theme(text = element_text(size=14, family="Philips Screen Font Condensed", face="bold"))
+                color="hotpink", size=2) +
+  theme(text = element_text(size=14, family="OCR A Extended", face="bold", color="yellow"))+
+  theme(plot.background = element_rect(fill = "black"))+
+  theme(panel.background = element_rect(fill = "black",
+                                      colour = "yellow",
+                                      size = 1, linetype = "solid"))+
+  theme(panel.grid.major = element_line(size = 1, linetype = 'solid',
+                                        colour = "yellow"), 
+        panel.grid.minor = element_line(size = 1, linetype = 'solid',
+                                        colour = "yellow"))+
+  theme(axis.text = element_text(color="yellow"))
 print(orbit_plot)
 ```
 
@@ -230,11 +278,20 @@ and density-volume product.
 ```{r corr_plot, fig.align="center"}
 cor_data <- cor_data[!(cor_data$mass == max(cor_data$mass)),]
 mass_fit_plot <- ggplot(data = cor_data, aes(x = densvol, y = mass)) + 
-  geom_point(color='blue', size=3) +
-  geom_smooth(method = "lm", se = FALSE, color="red")+
+  geom_point(color='magenta', size=3) +
+  geom_smooth(method = "lm", se = FALSE, color="green")+
   labs(x="Density/volume product (kg)", y="Planet Mass (kg)" )+
   labs(title = "Correlation plot")+
-  theme(text = element_text(size=16, family="Rod", face="bold"))
+  theme(text = element_text(size=16, family="OCR A Extended", face="bold", color="yellow"))+
+  theme(plot.background = element_rect(fill = "black"))+
+  theme(panel.background = element_rect(fill = "black",
+                                      colour = "yellow",
+                                      size = 1, linetype = "solid"))+
+  theme(panel.grid.major = element_line(size = 1, linetype = 'solid',
+                                        colour = "yellow"), 
+        panel.grid.minor = element_line(size = 1, linetype = 'solid',
+                                        colour = "yellow"))+
+  theme(axis.text = element_text(color="yellow"))
 print(mass_fit_plot)
 ```
 
